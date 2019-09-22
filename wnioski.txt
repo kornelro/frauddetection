@@ -1,0 +1,71 @@
+FRAUD DETECTIONS
+
+-Analiza transakcji kartami kredytowymi. Cel: wykrycie oszustw.   
+-Time, V1..V28, Amount, Class    
+-V1..V28 zawierają ciągłe atrybuty, które są efektem przekształcenia PCA.  
+-Time - sekundy od pierwszej transakcji.  
+-Amount - wartość transakcji.  
+
+PRZEGLĄD DANYCH - WNIOSKI
+
+-Nie mamy wartości brakujących.  
+-Charakter danych zgadza się z opisem.   
+-Niektóre atrybuty znacznie różnią sie odchyleniem standardowym.  
+-Wszystkie średnie bliskie 0, co potwierdza normalizację danych (konieczną dla PCA).
+
+WIZUALIZACJA - WNIOSKI
+
+- Mamy oczywiście doczynienia z bardzo niezrównoważonym zbiorem, na co trzeba będzie zwrócić
+	szczególną uwage przy modelowaniu  
+- Nie ma atrybutów, które bardzo wyraźnie oddzielają klasy, ale atrybuty V4, V11, V12 czy V14
+	wyglądają na bardziej znaczące. 
+- W przypadku oszustw nie zdażają się tak wysokie kwoty, jak w przypadku transakcji legalnych.
+	Być może transakcje na wysokie kwoty są bardziej obserwowane i dlatego ciężej jest na takich
+	oszukiwać.  
+- Sam atrybut Time niewiele daje, ale jego przekształcenie na godziny pozwala wyciągać bardziej
+	sensowne wnioski. Tutaj zakładam, że pierwsza transakcja w zbiorze była wykonana na samym
+	początku dnia.  
+- W godzinach 0-10 wykonuje się mniej legalnych transakcji, co nie jest tak dobrze widoczne
+	w przypadku oszustw, które są wykonywane również w nocy. Transakcje wykonywane w nocy mają
+	większą szansę na bycie oszustwem.  
+- W transkacjach oszukanych nie zdarzają się bardzo wysokie kwoty, jednak często są to średnio
+	kwoty wyższe niż w transkacjach legalnych. Dlatego utworzyłem atrybut pokazujący różnicę
+	wartości transakcji od średniej wartosci transakcji dla danej godziny. Wydaje się on być
+	znaczący dla transakcji o niskich wartościach i jeżeli jeszcze weźmiemy pod uwagę godzinę.
+	W przypadku tego artrybutu trzeba uważać, aby "nie wróżyć z fusów" ;), jego wartość będę
+	liczył używająć średnich tylko ze znanego zbioru testowego.  
+- Przykładowe scatter ploty względem V4, V11, V12, V14 pokazują, że klasy można nawet dobrze
+	odserparować. Myślę, że z takimi podziałami powinny poradzić sobie drzewa.  
+- Między atrybutami nie występują silne korelacje. 
+
+MODELOWANIE
+
+- Miara, której użyję do oceny modelu to F1score, ponieważ chcemy mieć pewność, że oznaczone
+	przez nas oszustwa to oszustwa (precision), ale też znaleźć jak najwięcej oszustw (recall).  
+- Do modelowania pozbędę się atrybutu time, ale dodam atrybuty Hour, HourMeanDiff oraz spróbuję
+	też z atrybutem binarnym, gdzie 1 oznacza noc.
+- Do zbioru testowego wyznaczę 100 oszustw i 400 transakcji legalnych
+- Pierwszą próbą będzie regresja logistyczna, na zrównoważonym zbiorze - usunięta zostanie
+	znaczna część transakcji normalnych. Tutaj niestety stracimy dużo informacji.
+- Sróbuję też z lasem lososwym, na którym każde k drzew będzie uczone na zbiorze składającym się
+	zawsze z tego samego zbioru oszustw i losowo wybranego zbioru transakcji normalnych
+	(w różnych bardziej zrównoważonych proporcjach, np 1:1, 2:1, 3:1). W tym podejściu będziemy
+	mogli wykorzystać więcej informacji ze zbioru danych.
+
+MODELOWANIE - WYNIKI F1SCORE
+
+Regresja logistyczna - 0.925
+Pierwszy las (100 drzew) - 0.914
+Las rozbudowany o kolejne drzewa - 0.931
+
+MODELOWANIE - WNIOSKI
+
+- Regresja logistyczna dała trochę lepsze wyniki niż pierwszy las losowy ze 100 drzewami.
+- Wynik F1score poprawił się gdy do lasu dołożyliśmy drzewa trenowane na kolejnych porcjach danych.
+- Tu trzeba zwrócić uwagę, że poprawiła się wartość recall, ale trochę spadła wartość precision.  
+- Las wydaje się lepszym modelem, bo został wytrenowany na większej próbce danych niż regresja
+	logistyczna.  
+- Las nie jest dobrze interpretowalnym modelem, ale możemy skorzystać z feature_importance.
+	W rankingu ważności wysoko zostały wskazane m.in. atrybuty, które wskazałem po wizualizacji.
+	Z dodanych przeze mnie atrybutów najważniejszy okazał się HourMeanDiff, ale nie zajął on
+	znacznie wysokiego miejsca.
